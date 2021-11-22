@@ -1,46 +1,140 @@
-# Getting Started with Create React App
+# Countries UI
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Getting Start
 
-## Available Scripts
+It's simple to get started on this app. Just run
 
-In the project directory, you can run:
+```bash
+yarn start
+```
 
-### `yarn start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+For this app used the following key tools
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+- Typescript
+- React
+- Apollo
+- Mui (Material UI v5)
+- Styled Components
 
-### `yarn test`
+## Key Points
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Pagination - Problem
 
-### `yarn build`
+I spent sometime trying to figure out how I could get GraphQL to return a paginated response,
+as opposed to holding the full response in memory and manipulating it on the client-side, as  
+this could possibly proof problematic when dealing with larger data-sets.
+However, I wasn't able to find a solution that could be implemented without making changes to the graphql server.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Pagination - Solution
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Considering the points made previously, I decided to use React Hooks to render the country component in a somewhat
+paginated manner with a custom hook called usePagination
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```typescript
+export const usePaginationQuery = (limit: number, searchString?: string) => {
+  const { data, loading } = useFetchCountries();
+  const filterData = useMemo(
+    () =>
+      searchString
+        ? data?.countries.filter((country) =>
+            country.name.toLowerCase().includes(searchString.toLowerCase())
+          )
+        : data?.countries,
+    [data, searchString]
+  );
+  const [indexCursor, setIndexCursor] = useState(0);
+  const result = useMemo(
+    () => (!loading ? filterData?.slice(0, indexCursor + limit) : []),
+    [loading, data, indexCursor, limit, filterData]
+  );
+  const hasMore = useMemo(
+    () => filterData && limit <= filterData.length,
+    [filterData]
+  );
+  const fetchMore = () => setIndexCursor((i) => i + limit);
+  return {
+    data: result,
+    fetchMore,
+    loading,
+    hasMore,
+  };
+};
+```
 
-### `yarn eject`
+#### Pagination - Solution - How it works?
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+The initial step is to make the GQL query for the list of countries, then filtering the array
+based on the `searchString` argument. This was wrapped in a `useMemo` so the result would be
+regenerated if the state of the query response or the arguments changes
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```typescript
+const { data, loading } = useFetchCountries();
+const filterData = useMemo(
+  () =>
+    searchString
+      ? data?.countries.filter((country) =>
+          country.name.toLowerCase().includes(searchString.toLowerCase())
+        )
+      : data?.countries,
+  [data, searchString]
+);
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+The next step was to add logic to slice the response array at a certain point, while allowing
+said point to be moved when `fetchMore` is called. This behaviour was design to mimic a cursor.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+```typescript
+const result = useMemo(
+  () => (!loading ? filterData?.slice(0, indexCursor + limit) : []),
+  [loading, data, indexCursor, limit, filterData]
+);
+const fetchMore = () => setIndexCursor((i) => i + limit);
+```
 
-## Learn More
+The final step was to calculate if `hasMore` would be true or false and this was done by checking if
+the limit size surpasses the length of the filtered result list
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```typescript
+const fetchMore = () => setIndexCursor((i) => i + limit);
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# UI
+A country card was generated for each item in usePagination response which is help as more items can be added to 
+the response on the fly.
+
+```typescript
+<CardWrapper>
+  {data?.map((country) => (
+    <Card elevation={2} key={country.code}>
+      <CardContent>
+        <Typography variant="h5" component="div" bgcolor="primary">
+          {country.name}
+        </Typography>
+        <Typography variant="h6" component="div" bgcolor="primary">
+          {country.capital}
+        </Typography>
+        <Typography variant="subtitle1" component="div" bgcolor="primary">
+          {country.native}
+        </Typography>
+        <Typography bgcolor="primary" variant="h1">
+          {country.emoji}
+        </Typography>
+      </CardContent>
+    </Card>
+  ))}
+</CardWrapper>;
+{
+  hasMore && (
+    <Button variant="contained" onClick={fetchMore}>
+      {loading ? <CircularProgress /> : "Fetch More"}
+    </Button>
+  );
+}
+```
+
+# Extra Credit
+
+- Styled Components: Used to styled the MUI components to make them more suitable
+- Theming: This was using to achieve the dark mode toogle

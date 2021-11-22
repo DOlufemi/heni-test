@@ -1,6 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import {
@@ -9,6 +8,7 @@ import {
   InMemoryCache,
 } from "@apollo/react-hooks";
 import { offsetLimitPagination } from "@apollo/client/utilities";
+import {CssBaseline} from "@mui/material";
 
 const client = new ApolloClient({
   cache: new InMemoryCache({
@@ -25,6 +25,7 @@ const client = new ApolloClient({
 ReactDOM.render(
   <ApolloProvider client={client}>
     <React.StrictMode>
+      <CssBaseline />
       <App />
     </React.StrictMode>
   </ApolloProvider>,
